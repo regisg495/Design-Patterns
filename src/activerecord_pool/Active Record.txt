@@ -1,0 +1,429 @@
+Problema:
+Você precisa realizar as operações de CRUD no banco de dados. Soluções (Feitas por mim, rs):
+
+
+
+Perceba que no modelo DAO, tudo é dividido, MODEL, Camada de persistencia e apresentação. O Dao nada mais é do que uma interface com operações para acesso a dados,
+que abstraem o mecanismo de persistencia de dados.
+
+Solução 1, DAO:
+ 
+
+------------------------------------------------------------
+
+
+Model
+
+public class Aluno implements Entity {
+	private Integer idaluno;
+	private String nome;
+	private String email;
+	private Float salario;
+	private LocalDateTime dateTimeCreation;
+	private LocalDateTime dateTimeLastUpdate;
+
+	public Aluno(String nome, String email, Float salario) {
+		super();
+		this.nome = nome;
+		this.email = email;
+		this.salario = salario;
+	}
+
+	@Override
+	public Integer getId() {
+		return this.idaluno;
+	}
+
+	@Override
+	public LocalDateTime getDateTimeCreation() {
+		return this.dateTimeCreation;
+	}
+
+	@Override
+	public LocalDateTime getDateTimeLastUpdate() {
+		return this.dateTimeLastUpdate;
+	}
+	
+	public void setDateTimeCreation(LocalDateTime data) {
+		this.dateTimeCreation = data;
+	}
+	
+	public void setDateTimeLastUpdate(LocalDateTime data) {
+		this.dateTimeLastUpdate = data;
+	}
+
+	public String getNome() {
+		return this.nome;
+	}
+
+	public String getEmail() {
+		return this.email;
+	}
+
+	public Float getSalario() {
+		return this.salario;
+	}
+
+	public void setIdaluno(Integer idaluno) {
+		this.idaluno = idaluno;
+	}
+	
+}
+
+public interface Entity {
+
+	Integer getId();
+
+	java.time.LocalDateTime getDateTimeCreation();
+
+	java.time.LocalDateTime getDateTimeLastUpdate();
+
+	default boolean isPersistent() {
+		return this.getId() != null;
+	}
+
+	default boolean isTransient() {
+		return this.getId() == null;
+	}
+
+}
+
+Interface do DAO:
+
+public interface DAO<T extends Entity> {
+	void save(T object);
+
+}
+
+Classe da Conexão 
+
+package DAOImpl;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public abstract class DaoImpl <T extends Entity> implements DAO<T> {
+
+	private final String url = "jdbc:postgresql://localhost/siamelhorado";
+	private final String username = "postgres";
+	private final String password = "postgres";
+	
+	private Connection connection; 
+	
+	public Connection openConnection() {
+		try {
+			connection = DriverManager.getConnection(url, username, password);
+			return connection;
+
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+}	
+
+Classe do DAO específico do Aluno:
+
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+
+public class AlunoDAO extends DaoImpl<Aluno> {
+
+	@Override
+	public void save(Aluno aluno) {
+		String sql;
+		try (Connection connection = openConnection()) {
+			if (aluno.isTransient()) {
+				sql = "INSERT INTO Aluno (nome, email) VALUES (?,?);";
+			} else {
+				sql = "UPDATE Aluno SET nome = ?, email = ?, salario = ? WHERE idaluno = ?;";
+			}
+			PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+			if (aluno.getNome() == null) {
+				stmt.setNull(1, Types.VARCHAR);
+			} else {
+				stmt.setString(1, aluno.getNome());
+			}
+
+			if (aluno.getEmail() == null) {
+				stmt.setNull(2, Types.VARCHAR);
+			} else {
+				stmt.setString(2, aluno.getEmail());
+			}
+			if (aluno.getSalario() == null) {
+				stmt.setNull(3, Types.FLOAT);
+			} else {
+				stmt.setDouble(3, aluno.getSalario());
+			}
+			if (aluno.isPersistent()) {
+				stmt.setInt(4, aluno.getId());
+			}
+			stmt.execute();
+
+			if (aluno.isTransient()) {
+				ResultSet key = stmt.getGeneratedKeys();
+
+				if (key.next()) {
+					aluno.setIdaluno(key.getInt(1));
+				}
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+
+	}
+}
+
+------------------------------------------------------------
+
+Solução 2, Data Mapper: 
+
+package DAOImpl;
+
+public class Aluno extends Conexao {
+	private Integer idaluno;
+	private String nome;
+	private String email;
+	private Float salario;
+
+	public Aluno() {
+
+	}
+
+	public Integer getIdaluno() {
+		return idaluno;
+	}
+
+	public void setIdaluno(Integer idaluno) {
+		this.idaluno = idaluno;
+	}
+
+	public String getNome() {
+		return nome;
+	}
+
+	public void setNome(String nome) {
+		this.nome = nome;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public Float getSalario() {
+		return salario;
+	}
+
+	public void setSalario(Float salario) {
+		this.salario = salario;
+	}
+
+}
+
+E então um DAO (às vezes), ou uma classe AlunoMapper faz o trabalho de inserir
+package DAOImpl;
+
+public class Main {
+
+	public static void main(String[] args) {
+		AlunoDAO alunodao = new AlunoDAO();
+		Aluno aluno = new Aluno();
+
+		aluno.setNome("Regis");
+		aluno.setEmail("regisg495@gmail.com");
+		aluno.setSalario(new Float(1000.0));
+
+		alunodao.save(aluno);
+	}
+
+}
+
+
+------------------------------------------------------------
+
+Solução com Active Record Pattern:
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.List;
+
+public class Aluno extends Conexao {
+	private Integer idaluno;
+	private String nome;
+	private String email;
+	private Float salario;
+
+	public Aluno(String nome, String email, Float salario) {
+		super();
+		this.nome = nome;
+		this.email = email;
+		this.salario = salario;
+	}
+	public void setNome(String nome) {
+		this.nome = nome;
+		this.save();
+	}
+	public void setEmail(String email) {
+		this.email = email;
+		this.save();
+	}
+	public void setSalario(Float salario) {
+		this.salario = salario;
+		this.save();
+	}
+	public void save() {
+		String sql;
+		try (Connection connection = openConnection()) {
+			if (this.idaluno == null) {
+				sql = "INSERT INTO Aluno (nome, email) VALUES (?,?);";
+			} else {
+				sql = "UPDATE Aluno SET nome = ?, email = ?, salario = ? WHERE idaluno = ?;";
+			}
+			PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+			if (this.nome == null) {
+				stmt.setNull(1, Types.VARCHAR);
+			} else {
+				stmt.setString(1, this.nome);
+			}
+			if (this.email == null) {
+				stmt.setNull(2, Types.VARCHAR);
+			} else {
+				stmt.setString(2, this.email);
+			}
+			if (this.salario == null) {
+				stmt.setNull(3, Types.FLOAT);
+			} else {
+				stmt.setDouble(3, this.salario);
+			}
+			if (this.idaluno != null) {
+				stmt.setInt(4, this.idaluno);
+			}
+			stmt.execute();
+			if (this.idaluno != null) {
+				ResultSet key = stmt.getGeneratedKeys();
+
+				if (key.next()) {
+					this.idaluno = key.getInt(1);
+				}
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public abstract class Conexao {
+
+	private final String url = "jdbc:postgresql://localhost/ebay";
+	private final String username = "postgres";
+	private final String password = "postgres";
+
+	private Connection connection;
+
+	public Connection openConnection() {
+		try {
+			connection = DriverManager.getConnection(url, username, password);
+			return connection;
+
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+}
+
+Diferentemente de outras abordagens para banco de dados, por DAO, que, como dito nada mais é do que uma interface de abstração para operações para acesso a dados. Ou o area mapper, que é uma camada que fica entre o model entre o dominio e o banco de dados para persistencia de dados, no Active Record você tem a camada de persistencia na própria classe, o que permite encapsular o SQL. 
+As operações de CRUD ficam na mesma classe, o exemplo que criei, acima foi com o insert, mas você pode ter os outros métodos delete e select - resolvi usar o proprio insert como update, caso a tabela ja contenha o registro que se quer inserir. Outro ponto importante é que, no Active Record, você pode ter sua classe de negócio e usar ela para inserir o Aluno, nada impede que você tenha outras classes de negócio que usam a classe que contem o CRUD (O Active Record), mas diferentemente do DataMapper e do DAO, sua classe Model não terá NENHUM método relativo à CRUD.
+TODO objeto em Active Record (por isso chama-se registro ativo), deve ter relação com o banco de dados, por isso, repare que, ao alterar o estado do objeto (setEmail(), setNome(), setSalario()), também é feito o save, que vai verificar se o Usuário já existe - se o ID não é nulo - e fazer o UPDATE.
+
+
+Neste sentido, Fowler(p 186, 2003) explica que:
+
+				A classe Active Record geralmente possui métodos que fazem o seguinte:
+				• Construir uma instância do Active Record de uma linha do conjunto de resultados do SQL
+				• Construir uma nova instância para posterior inserção na tabela
+				• Métodos localizadores estáticos para envolver consultas SQL comumente usadas e retornar
+				Objetos Active Record
+				• Atualize o banco de dados e insira nele os dados no Active Record
+				• Obter e definir os campos
+				• Implementar algumas partes da lógica de negócios
+
+Os métodos estátiticos devem servir para auxiliar nas queryes de SQL, por exemplo - como no atual trabalho -, você tem campos na classe de domínio que contêm validação 
+de regex, como CPF contendo um traço (-) antes dos dois últimos digitos e o banco de dados possui um check para validar ele com um length de 11 digitos, neste caso, você 
+tem 12 digitos na linguagem back-end para ser válido, e 11 no banco de dados, é interessante você ter métodos estáticos para ajustar esse campo a cada criação de objeto (numa select criando um novo objecto com os resultados)/ persistencia de dados (pois para ele ser válido você precisa cria-lo com 12 digitos).
+
+Aliás, você pode colocar os métodos de CRUD como estáticos, isso lhe permite fazer coisas do tipo:
+
+CREATE TABLE Pessoa (idpessoa INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100));
+
+class Pessoa {
+	private int idpessoa; Um ponto importante é que, no AR, seus fields da classe devem ser IGUAIS à tabela
+	private String nome;
+
+	public Pessoa(fields){
+	this... = ...;
+
+	
+	public static void loadByID(int idpessoa){
+	
+	return pessoa que tem id igual;
+
+	}
+}
+	no Main, você só chama:
+
+	Pessoa p = Pessoa.loadByID(int id);
+
+
+
+Você pode, como diz Fowler, construir uma nova instancia do AR de uma linha de conjuntos de resultados do SQL, isto é, você faz uma select no sua classe AR e ela pode retornar um List caso o parametro de pesquisa não seja Unique ou PK, ou retornar um novo objeto caso o parâmetro de pesquisa seja PK ou unique.
+Você pode também, como fiz, criar uma classe ActiveRecord especifica para aquela classe, como fiz, exemplo, assim você pode criar uma instancia de pessoa e usar os métodos de AR nela.
+
+class pessoa extends ActiveRecord {
+
+}
+class ActiveRecord {
+
+public void save();
+
+}
+
+
+
+Active Record:
+
+Padrão para fazer CRUD em um banco de dados. A tabela é agrupada dentro de uma classe (as classes são iguals à tabela, o que inclusive permite o uso de reflection). Logo, cada instância de objeto está vinculado a uma linha da tabela. Quando um objeto é atualizado, a linha correspondente na tabela também é atualizada.
+
+Classes (Componentes)
+
+	Cliente (Main)
+	Classe de Domínio (O objeto em si)
+
+Prós e Contras 
+	+ Produtividade: todo mundo que faz algum programa que precisa fazer CRUD sabe muito bem o quanto é burocrático, extremamente demorado. O AR fornece uma maneira mais fácil e menos burocrática, sem a criação de milhares de interfaces, classes, etc.
+	+ Menor Complexidade: Como dito, como não precisamos de uma interface (DAO), ou de um Mapper (Data Mapper), seu código fica menos complexo, quem já fez um DAO sabe que não existe DAO sem explosão de classes! 
+	- Como seus objetos possuem relação direta com o banco de dados, você precisa ter conexão com SQL em todos os lugares, seus objetos se parecem mais com SQL.
+	- Você não tem mais um "domínio", você tem agora uma camada de persistencia chamada de domínio, inclusive violando o SOLID, que diz que uma classe não deve fazer mais de uma coisa haver com ela, se tenho uma classe Aluno, ele é Aluno, se tenho uma classe AlunoDAO, ele persiste dados de Aluno.
+	- O teste de software fica impossível sem acesso ao banco de dados, segundo o que li, é talvez o principal problema e, ao meu ver, você não tem mais teste unitário porque para executar seus testes você precisa do SQL.
+
+Fontes: 
+
+https://www.martinfowler.com/eaaCatalog/activeRecord.html.
+http://ndlib.github.io/practices/active-record-pattern-and-alternatives/
+http://training.hasintech.com/download/attachments/1802696/Patterns%20of%20Enterprise%20Application%20Architecture%20-%20Martin%20Fowler.pdf?version=1&modificationDate=1464702352696&api=v2 

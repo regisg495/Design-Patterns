@@ -1,0 +1,58 @@
+1) Adapte o Trabalho2 (Form, Field<T>) substituindo Template Method por Strategy e Null Object, diagrama de classes e código
+2) Utilize um logger Singleton para arquivo texto
+
+1.0 ponto extra: utilizar reflection
+	https://docs.oracle.com/javase/tutorial/reflect/TOC.html
+
+Exemplo de execução:
+====================
+
+Name: xxxxx
+Re-enter Name: abc def
+Re-enter Name: Abc Def
+Gender: x
+Re-enter Gender: m
+Re-enter Gender: M
+Age: abc
+Re-enter Age: 
+Re-enter Age: 19
+Payment: abc
+Re-enter Payment: 123
+Re-enter Payment: 123.45
+Birthdate: abc
+Re-enter Birthdate: 2000
+Re-enter Birthdate: 2000-10
+Re-enter Birthdate: 2000-10-99
+Re-enter Birthdate: 2000-10-15
+Email: abc
+Re-enter Email: abc@def.com.br
+Hello Sr. Abc Def!
+You born in 2000-10-15 and are 19 years old.
+With a 10% up, your payment will be $135,80.
+
+Exemplo de log:
+===============
+
+[2018-09-06 19:00:00] form PersonForm filling started
+[2018-09-06 19:00:02] Invalid value "xxxxx" for String field Name on form PersonForm
+[2018-09-06 19:00:04] Invalid value "abc def" for String field Name on form PersonForm
+[2018-09-06 19:00:06] Acepted value "Abc Def" for String field Name on form PersonForm
+[2018-09-06 19:00:08] Invalid value "x" for String field Gender on form PersonForm
+[2018-09-06 19:00:10] Invalid value "m" for String field Gender on form PersonForm
+[2018-09-06 19:00:12] Acepted value "M" for String field Gender on form PersonForm
+[2018-09-06 19:00:14] Invalid value "abc" for Integer field Age on form PersonForm
+[2018-09-06 19:00:16] Invalid value "" for Integer field Age on form PersonForm
+[2018-09-06 19:00:18] Acepted value "19" for Integer field Age on form PersonForm
+[2018-09-06 19:00:20] Invalid value "abc" for Double field Payment on form PersonForm
+[2018-09-06 19:00:22] Invalid value "123" for Double field Payment on form PersonForm
+[2018-09-06 19:00:24] Acepted value "123.45" for Double field Payment on form PersonForm
+[2018-09-06 19:00:26] Invalid value "abc" for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:28] Invalid value "2000" for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:30] Invalid value "2000-10" for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:32] 3 Invalid attempts for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:34] Invalid value "2000-10-99" for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:36] Acepted value "2000-10-15" for LocalDate field Birthdate on form PersonForm
+[2018-09-06 19:00:38] Invalid value "abc" for String field Email on form PersonForm
+[2018-09-06 19:00:40] Acepted value "abc@def.com.br" for String field Email on form PersonForm
+[2018-09-06 19:00:42] form PersonForm filling done
+

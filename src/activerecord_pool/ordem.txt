@@ -1,0 +1,58 @@
+1) Pesquisar e descrever o padrão Active Record
+2) Utilizando o Trabalho4 para acessar o banco de dados, implementar a camada de persistência para as tabelas Pessoa e Funcionario utilizando as classes legadas Pessoa, Endereco e Funcionario
+* As classes legadas Pessoa, Endereco e Funcionario não podem ser alteradas.
+* Implementar os métodos insert, select, update e delete como em ActiveJDBC, desconsiderar outros métodos.
+	http://javalite.io/activejdbc
+	http://javalite.io/getting_started
+	http://javalite.io/record_creation
+
+create table pessoa (
+	cpf char(11) not null check (length(trim(cpf)) = 11),
+	nome varchar(100) not null check (length(trim(nome)) > 0),
+	nascimento date not null default now() check (nascimento <= now()),
+	genero char(1) not null default 'M' check ((genero = 'M') or (genero = 'F')),
+	endereco varchar(100) not null check (length(trim(endereco)) > 0), -- csv
+	telefones varchar(100), -- csv
+	emails varchar(100), -- csv
+	primary key (cpf)
+);
+
+create table funcionario (
+	cpf char(11) not null check (length(trim(cpf)) = 11) references pessoa(cpf),
+	salario real not null check (salario > 0),
+	dependentes integer not null check (dependentes >= 0),
+	contratacao date not null default now() check (contratacao <= now()),
+	primary key (cpf)
+);
+
+public class Pessoa {
+	private String CPF; // [0-9]{9}-[0-9]{2}
+	private String nome; // [A-Z][a-z]+( [A-Z][a-z]+)+
+	private LocalDate nascimento; // (19|2[0-9])[0-9]{2}-(0?[1-9]|1[0-2])-(0?[1-9]|[1-2][0-9]|3[0-1])
+	private char genero; // [MF]
+	private Endereco endereco;
+	private String telefones[]; // (0[0-9]{2})?[0-9]{8,9}
+	private String emails[]; // [a-z0-9]+([_\.][a-z0-9]+)*@[a-z0-9]+([_\.][a-z0-9]+)*\.[a-z]{3}(\.[a-z]{2})?
+	// construtores 1) sem parâmetros e 2) com todos os atributos como parâmetros
+	// getters e setters com validação
+}
+
+public class Endereco {
+	private String tipo; // (Rua|Avenida|Travessa|Alameda|Via|Estrada|Rodovia|...)
+	private String logradouro; // ([A-Z][a-z]+|[0-9]+)( ([A-Z][a-z]+|[0-9]+))+
+	private String numero; // [0-9]+[A-Z]*
+	private String CEP; // [0-9]{5}-[0-9]{3}
+	private String cidade; // [A-Z][a-z]+( [A-Z][a-z]+)+
+	private String UF; // (AC|AL|AM|AP|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO)
+	// construtores 1) sem parâmetros e 2) com todos os atributos como parâmetros
+	// getters e setters com validação
+}
+
+class Funcionario extends Pessoa {
+	private double salario; // [0-9]*.?[0-9]+
+	private int dependentes; // [0-9]+
+	private LocalDate contratacao; // (19|2[0-9])[0-9]{2}-(0?[1-9]|1[0-2])-(0?[1-9]|[1-2][0-9]|3[0-1])
+	// construtores 1) sem parâmetros e 2) com todos os atributos como parâmetros
+	// getters e setters com validação
+}
+
